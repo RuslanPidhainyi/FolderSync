@@ -1,30 +1,23 @@
 namespace FolderSync.Logging;
 
 /// <summary>
-/// Writes every log line both to the console and to a log file.
-/// The file is opened in append mode so history survives restarts; each line is flushed
-/// immediately so nothing is lost if the process is killed.
+/// Formats log entries (timestamp + level + message) and fans each line out to every sink.
+/// Formatting lives here; where the lines go is the sinks' concern.
 /// </summary>
 public sealed class SyncLogger : ISyncLogger, IDisposable
 {
-    private readonly TextWriter _console;
-    private readonly StreamWriter _file;
+    private readonly ILogSink[] _sinks;
     private readonly object _gate = new();
 
-    public SyncLogger(string logFilePath, TextWriter? console = null)
+    public SyncLogger(params ILogSink[] sinks)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(logFilePath);
-
-        var fullPath = Path.GetFullPath(logFilePath);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
+        ArgumentNullException.ThrowIfNull(sinks);
+        if (sinks.Length == 0)
         {
-            Directory.CreateDirectory(directory);
+            throw new ArgumentException("At least one log sink is required.", nameof(sinks));
         }
 
-        var stream = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.Read);
-        _file = new StreamWriter(stream) { AutoFlush = true };
-        _console = console ?? Console.Out;
+        _sinks = sinks;
     }
 
     public void Info(string message) => Write("INFO ", message);
@@ -43,8 +36,10 @@ public sealed class SyncLogger : ISyncLogger, IDisposable
 
         lock (_gate)
         {
-            _console.WriteLine(line);
-            _file.WriteLine(line);
+            foreach (var sink in _sinks)
+            {
+                sink.Write(line);
+            }
         }
     }
 
@@ -52,7 +47,10 @@ public sealed class SyncLogger : ISyncLogger, IDisposable
     {
         lock (_gate)
         {
-            _file.Dispose();
+            foreach (var sink in _sinks)
+            {
+                sink.Dispose();
+            }
         }
     }
 }

@@ -39,14 +39,15 @@ public sealed class PeriodicSyncRunnerTests
     }
 
     [Fact]
-    public void RunOnce_logs_summary()
+    public void RunOnce_logs_summary_and_reports_success()
     {
         var synchronizer = new FakeSynchronizer(_ => new SyncResult(2, 1, 3, 0, 0, 0, TimeSpan.FromMilliseconds(5)));
         var log = new TestLogger();
         var runner = new PeriodicSyncRunner(synchronizer, TimeSpan.FromSeconds(1), log);
 
-        runner.RunOnce(CancellationToken.None);
+        var succeeded = runner.RunOnce(CancellationToken.None);
 
+        Assert.True(succeeded);
         Assert.Equal(1, runner.CompletedPasses);
         Assert.Contains(log.Infos, e => e.Contains("2 file(s) created, 1 updated, 3 deleted"));
     }
@@ -58,8 +59,9 @@ public sealed class PeriodicSyncRunnerTests
         var log = new TestLogger();
         var runner = new PeriodicSyncRunner(synchronizer, TimeSpan.FromSeconds(1), log);
 
-        runner.RunOnce(CancellationToken.None);
+        var succeeded = runner.RunOnce(CancellationToken.None);
 
+        Assert.False(succeeded);
         Assert.Contains(log.Errors, e => e.Contains("failed") && e.Contains("gone"));
         Assert.Equal(1, runner.CompletedPasses);
     }
@@ -71,8 +73,9 @@ public sealed class PeriodicSyncRunnerTests
         var log = new TestLogger();
         var runner = new PeriodicSyncRunner(synchronizer, TimeSpan.FromSeconds(1), log);
 
-        runner.RunOnce(CancellationToken.None);
+        var succeeded = runner.RunOnce(CancellationToken.None);
 
+        Assert.False(succeeded);
         Assert.Contains(log.Infos, e => e.Contains("finished with errors") && e.Contains("2 error(s)"));
     }
 

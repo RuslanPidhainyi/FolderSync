@@ -37,7 +37,8 @@ public sealed class PeriodicSyncRunner
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false));
     }
 
-    public void RunOnce(CancellationToken cancellationToken)
+    /// <summary>Runs a single pass. Returns <c>true</c> when it completed without any error.</summary>
+    public bool RunOnce(CancellationToken cancellationToken)
     {
         var pass = CompletedPasses + 1;
         _log.Info($"Synchronization #{pass} started");
@@ -47,6 +48,7 @@ public sealed class PeriodicSyncRunner
             var result = _synchronizer.Synchronize(cancellationToken);
             var status = result.Errors == 0 ? "finished" : "finished with errors";
             _log.Info($"Synchronization #{pass} {status}: {result}");
+            return result.Errors == 0;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -56,6 +58,7 @@ public sealed class PeriodicSyncRunner
         catch (Exception ex)
         {
             _log.Error($"Synchronization #{pass} failed", ex);
+            return false;
         }
         finally
         {

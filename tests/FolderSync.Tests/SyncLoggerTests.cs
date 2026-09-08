@@ -10,12 +10,12 @@ public sealed class SyncLoggerTests : IDisposable
     public void Dispose() => _dir.Dispose();
 
     [Fact]
-    public void Writes_to_console_and_file()
+    public void Factory_builds_logger_that_writes_to_console_and_file()
     {
         var logPath = _dir.Sub("nested", "sync.log");
         var console = new StringWriter();
 
-        using (var logger = new SyncLogger(logPath, console))
+        using (var logger = SyncLoggerFactory.Create(logPath, console))
         {
             logger.Info("hello");
             logger.Warning("careful");
@@ -34,12 +34,12 @@ public sealed class SyncLoggerTests : IDisposable
     }
 
     [Fact]
-    public void Appends_to_existing_file()
+    public void File_sink_appends_to_existing_file()
     {
         var logPath = _dir.Sub("sync.log");
         File.WriteAllText(logPath, "previous run" + Environment.NewLine);
 
-        using (var logger = new SyncLogger(logPath, TextWriter.Null))
+        using (var logger = SyncLoggerFactory.Create(logPath, TextWriter.Null))
         {
             logger.Info("new run");
         }
@@ -51,14 +51,51 @@ public sealed class SyncLoggerTests : IDisposable
     }
 
     [Fact]
-    public void Flushes_each_line_immediately()
+    public void File_sink_flushes_each_line_immediately()
     {
         var logPath = _dir.Sub("sync.log");
-        using var logger = new SyncLogger(logPath, TextWriter.Null);
+        using var logger = SyncLoggerFactory.Create(logPath, TextWriter.Null);
 
         logger.Info("first");
 
         using var reader = new StreamReader(new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
         Assert.EndsWith("first", reader.ReadToEnd().TrimEnd());
+    }
+
+    [Fact]
+    public void Fans_every_line_out_to_all_sinks_and_disposes_them()
+    {
+        var first = new RecordingSink();
+        var second = new RecordingSink();
+
+        using (var logger = new SyncLogger(first, second))
+        {
+            logger.Info("one");
+            logger.Warning("two");
+        }
+
+        Assert.Equal(first.Lines, second.Lines);
+        Assert.Equal(2, first.Lines.Count);
+        Assert.EndsWith("[INFO ] one", first.Lines[0]);
+        Assert.EndsWith("[WARN ] two", first.Lines[1]);
+        Assert.True(first.Disposed);
+        Assert.True(second.Disposed);
+    }
+
+    [Fact]
+    public void Requires_at_least_one_sink()
+    {
+        Assert.Throws<ArgumentException>(() => new SyncLogger());
+    }
+
+    private sealed class RecordingSink : ILogSink
+    {
+        public List<string> Lines { get; } = [];
+
+        public bool Disposed { get; private set; }
+
+        public void Write(string line) => Lines.Add(line);
+
+        public void Dispose() => Disposed = true;
     }
 }

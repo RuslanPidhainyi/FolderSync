@@ -1,4 +1,6 @@
 using FolderSync.Sync;
+using FolderSync.Sync.Comparison;
+using FolderSync.Sync.FileSystem;
 using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests;
@@ -8,6 +10,7 @@ public sealed class FolderSynchronizerTests : IDisposable
     private readonly TempDirectory _source = new();
     private readonly TempDirectory _replica = new();
     private readonly TestLogger _log = new();
+    private readonly IFileComparer _comparer = FileComparerFactory.Create(ComparisonMode.Md5);
 
     public void Dispose()
     {
@@ -16,7 +19,7 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     private SyncResult Sync() =>
-        new FolderSynchronizer(_source.Path, _replica.Path, new Md5FileComparer(), _log).Synchronize();
+        new FolderSynchronizer(_source.Path, _replica.Path, _comparer, _log).Synchronize();
 
     [Fact]
     public void Copies_new_files_and_nested_folders()
@@ -44,10 +47,11 @@ public sealed class FolderSynchronizerTests : IDisposable
         _source.WriteFile("a.txt", "A");
         var replicaPath = _replica.Sub("nested", "replica");
 
-        var result = new FolderSynchronizer(_source.Path, replicaPath, new Md5FileComparer(), _log).Synchronize();
+        var result = new FolderSynchronizer(_source.Path, replicaPath, _comparer, _log).Synchronize();
 
         Assert.True(File.Exists(Path.Combine(replicaPath, "a.txt")));
         Assert.Equal(1, result.FilesCreated);
+        Assert.Contains(_log.Infos, e => e.Contains("Created folder") && e.Contains("<root>"));
     }
 
     [Fact]
@@ -168,13 +172,13 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
-    public void Reports_error_and_continues_when_a_file_cannot_be_copied()
+    public void Reports_error_and_continues_when_a_file_cannot_be_read()
     {
         _source.WriteFile("locked.txt", "L");
         _source.WriteFile("ok.txt", "OK");
         var replicaLocked = _replica.WriteFile("locked.txt", "different");
 
-        // Hold an exclusive handle so the overwrite fails.
+        // Hold an exclusive handle so the comparison fails.
         using var handle = new FileStream(replicaLocked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         var result = Sync();
 
@@ -184,10 +188,27 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
+    public void Isolates_failures_reported_by_file_operations()
+    {
+        _source.WriteFile("bad.txt", "B");
+        _source.WriteFile("good.txt", "G");
+        var fileSystem = new FailingFileOperations { FailCopyOf = "bad.txt" };
+        var synchronizer = new FolderSynchronizer(_source.Path, _replica.Path, _comparer, fileSystem, _log);
+
+        var result = synchronizer.Synchronize();
+
+        Assert.Equal(1, result.Errors);
+        Assert.Equal(1, result.FilesCreated);
+        Assert.True(_replica.FileExists("good.txt"));
+        Assert.False(_replica.FileExists("bad.txt"));
+        Assert.Contains(_log.Errors, e => e.Contains("bad.txt") && e.Contains("disk full"));
+    }
+
+    [Fact]
     public void Throws_when_source_does_not_exist()
     {
         var missing = _source.Sub("missing");
-        var synchronizer = new FolderSynchronizer(missing, _replica.Path, new Md5FileComparer(), _log);
+        var synchronizer = new FolderSynchronizer(missing, _replica.Path, _comparer, _log);
 
         Assert.Throws<DirectoryNotFoundException>(() => synchronizer.Synchronize());
     }
@@ -198,7 +219,7 @@ public sealed class FolderSynchronizerTests : IDisposable
         _source.WriteFile("a.txt", "A");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-        var synchronizer = new FolderSynchronizer(_source.Path, _replica.Path, new Md5FileComparer(), _log);
+        var synchronizer = new FolderSynchronizer(_source.Path, _replica.Path, _comparer, _log);
 
         Assert.Throws<OperationCanceledException>(() => synchronizer.Synchronize(cts.Token));
         Assert.False(_replica.FileExists("a.txt"));
@@ -214,5 +235,31 @@ public sealed class FolderSynchronizerTests : IDisposable
         Sync();
 
         Assert.Equal(bytes, File.ReadAllBytes(_replica.Sub("big.bin")));
+    }
+
+    /// <summary>Real file operations, except that copying one chosen file always fails.</summary>
+    private sealed class FailingFileOperations : IFileOperations
+    {
+        private readonly FileOperations _inner = new();
+
+        public required string FailCopyOf { get; init; }
+
+        public IReadOnlyList<FileSystemInfo> Enumerate(DirectoryInfo directory) => _inner.Enumerate(directory);
+
+        public void CopyFile(FileInfo source, FileInfo destination)
+        {
+            if (source.Name == FailCopyOf)
+            {
+                throw new IOException("disk full");
+            }
+
+            _inner.CopyFile(source, destination);
+        }
+
+        public void DeleteFile(FileInfo file) => _inner.DeleteFile(file);
+
+        public void CreateDirectory(DirectoryInfo directory) => _inner.CreateDirectory(directory);
+
+        public void DeleteDirectory(DirectoryInfo directory) => _inner.DeleteDirectory(directory);
     }
 }
