@@ -20,7 +20,7 @@ dotnet build -c Release
 Or produce a single executable:
 
 ```bash
-dotnet publish src/FolderSync -c Release -o publish
+dotnet publish App/FolderSync -c Release -o publish
 ```
 
 ## Usage
@@ -44,10 +44,10 @@ Examples:
 
 ```bash
 # Windows
-dotnet run --project src/FolderSync -- -s C:\Data -r D:\Backup\Data -i 60 -l C:\Logs\sync.log
+dotnet run --project App/FolderSync -- -s C:\Data -r D:\Backup\Data -i 60 -l C:\Logs\sync.log
 
 # Linux / macOS, positional form, every 5 minutes, cheap comparison for a large tree
-dotnet run --project src/FolderSync -- /home/me/docs /mnt/backup/docs 5m /var/log/foldersync.log --compare quick
+dotnet run --project App/FolderSync -- /home/me/docs /mnt/backup/docs 5m /var/log/foldersync.log --compare quick
 ```
 
 The program synchronizes immediately on start and then once per interval until you press `Ctrl+C`.
@@ -164,7 +164,7 @@ Patterns and principles in use:
 
 ```
 FolderSync.sln
-src/FolderSync/
+App/FolderSync/
   Program.cs                        entry point: parse, build, run, exit code
   ExitCodes.cs
   SyncApplication.cs                drives the runner in --once or periodic mode, owns the logger
@@ -193,7 +193,7 @@ src/FolderSync/
     FileSystem/
       IFileOperations.cs
       FileOperations.cs             System.IO implementation (attributes, timestamps, enumeration)
-tests/FolderSync.Tests/
+Tests/FolderSync.Tests/
   UnitTests/                        no disk, no real clock: fakes and in-memory doubles only
   IntegrationTests/                 real files, real folders, real System.IO
   EndToEndTests/                    parses real arguments and runs the composed application
