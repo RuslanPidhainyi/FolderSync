@@ -10,17 +10,18 @@ public static class Program
         try
         {
             options = SyncOptionsParser.Parse(args);
+            if (options is null)
+            {
+                Console.WriteLine(SyncOptionsParser.Usage);
+                return ExitCodes.Success;
+            }
+
+            SyncOptionsValidator.Validate(options);
         }
         catch (OptionsException ex)
         {
             ReportError(ex.Message, showUsage: true);
             return ExitCodes.InvalidArguments;
-        }
-
-        if (options is null)
-        {
-            Console.WriteLine(SyncOptionsParser.Usage);
-            return ExitCodes.Success;
         }
 
         SyncApplication application;

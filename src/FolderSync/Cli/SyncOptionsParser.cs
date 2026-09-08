@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using FolderSync.Sync;
 using FolderSync.Sync.Comparison;
 
 namespace FolderSync.Cli;
 
 /// <summary>
-/// Turns raw command line arguments into a validated <see cref="SyncOptions"/>.
+/// Turns raw command line arguments into a <see cref="SyncOptions"/> without touching the file system.
 /// Named (<c>--source dir</c>) and positional (<c>source replica interval log</c>) forms are accepted.
+/// Run the result through <see cref="SyncOptionsValidator"/> before using it.
 /// </summary>
 public static partial class SyncOptionsParser
 {
@@ -74,7 +74,7 @@ public static partial class SyncOptionsParser
     ];
 
     /// <summary>
-    /// Parses and validates the arguments. Returns <c>null</c> when help was requested.
+    /// Parses the arguments. Returns <c>null</c> when help was requested.
     /// Throws <see cref="OptionsException"/> with a user-friendly message on any problem.
     /// </summary>
     public static SyncOptions? Parse(IReadOnlyList<string> args)
@@ -121,16 +121,13 @@ public static partial class SyncOptionsParser
         AssignPositional(draft, positional);
         RequireMandatory(draft);
 
-        var options = new SyncOptions(
+        return new SyncOptions(
             Path.GetFullPath(draft.Source!),
             Path.GetFullPath(draft.Replica!),
             ParseInterval(draft.Interval!),
             Path.GetFullPath(draft.Log!),
             ParseComparisonMode(draft.Compare),
             draft.RunOnce);
-
-        Validate(options);
-        return options;
     }
 
     public static TimeSpan ParseInterval(string text)
@@ -215,41 +212,6 @@ public static partial class SyncOptionsParser
             {
                 throw new OptionsException($"The {spec.Description} is not specified.");
             }
-        }
-    }
-
-    /// <summary>Rejects configurations that would destroy data or loop forever.</summary>
-    private static void Validate(SyncOptions options)
-    {
-        if (!Directory.Exists(options.Source))
-        {
-            throw new OptionsException($"Source folder does not exist: {options.Source}");
-        }
-
-        if (File.Exists(options.Replica))
-        {
-            throw new OptionsException($"Replica path points to a file, not a folder: {options.Replica}");
-        }
-
-        if (PathUtilities.IsSameOrInside(options.Replica, options.Source))
-        {
-            throw new OptionsException("Replica folder must not be the source folder or located inside it.");
-        }
-
-        if (PathUtilities.IsSameOrInside(options.Source, options.Replica))
-        {
-            throw new OptionsException("Source folder must not be located inside the replica folder (it would be deleted).");
-        }
-
-        if (Directory.Exists(options.LogFilePath))
-        {
-            throw new OptionsException($"Log path points to a folder, not a file: {options.LogFilePath}");
-        }
-
-        if (PathUtilities.IsSameOrInside(options.LogFilePath, options.Source)
-            || PathUtilities.IsSameOrInside(options.LogFilePath, options.Replica))
-        {
-            throw new OptionsException("Log file must not be located inside the source or replica folder.");
         }
     }
 

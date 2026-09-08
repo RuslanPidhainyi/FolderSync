@@ -104,10 +104,11 @@ The code is organised so that each class has one reason to change and the algori
 concrete infrastructure.
 
 ```
-                 ┌──────────────────────┐
-  args ────────▶ │  SyncOptionsParser   │──▶ SyncOptions (immutable record)
-                 └──────────────────────┘             │
-                                                      ▼
+                 ┌──────────────────────┐   ┌────────────────────────┐
+  args ────────▶ │  SyncOptionsParser   │──▶│  SyncOptionsValidator  │──▶ SyncOptions
+                 └──────────────────────┘   └────────────────────────┘   (immutable record)
+                                                                                │
+                                                                                ▼
                  ┌──────────────────────────────────────────────┐
                  │ SyncApplicationFactory  (composition root)   │
                  │  ├ SyncLoggerFactory   ──▶ SyncLogger ─┬─ ConsoleLogSink
@@ -169,8 +170,9 @@ src/FolderSync/
   SyncApplication.cs                drives the runner in --once or periodic mode, owns the logger
   SyncApplicationFactory.cs         composition root
   Cli/
-    SyncOptions.cs                  immutable, validated options
-    SyncOptionsParser.cs            table-driven argument parsing and validation
+    SyncOptions.cs                  immutable options record
+    SyncOptionsParser.cs            table-driven argument parsing (no file system access)
+    SyncOptionsValidator.cs         checks options against the file system
     OptionsException.cs
   Logging/
     ISyncLogger.cs                  logging abstraction used by the domain
@@ -191,7 +193,11 @@ src/FolderSync/
     FileSystem/
       IFileOperations.cs
       FileOperations.cs             System.IO implementation (attributes, timestamps, enumeration)
-tests/FolderSync.Tests/             xUnit tests
+tests/FolderSync.Tests/
+  UnitTests/                        no disk, no real clock: fakes and in-memory doubles only
+  IntegrationTests/                 real files, real folders, real System.IO
+  EndToEndTests/                    parses real arguments and runs the composed application
+  Support/                          shared test doubles (TempDirectory, TestLogger, FakeSynchronizer, ...)
 ```
 
 ## Tests
@@ -200,9 +206,20 @@ tests/FolderSync.Tests/             xUnit tests
 dotnet test
 ```
 
-The tests create temporary folders under the system temp directory and cover: copying nested trees,
-detecting same-size content changes, deleting stale files/folders, replacing a file with a folder and
-vice versa, read-only and hidden files, timestamp preservation, error isolation (real locked files and an
-injected failing file system), cancellation, every comparison strategy and the factory that selects it,
-argument parsing and validation, logger formatting and sink fan-out, the periodic runner, and the fully
-composed application end to end.
+Every test follows Arrange / Act / Assert, and tests are split by what they touch:
+
+* **`UnitTests/`** — one class in isolation, no disk and no real clock. Dependencies are fakes
+  (`FakeSynchronizer`, `RecordingSink`, `TestLogger`) or values with no side effects
+  (`SyncOptionsParser`, `PathUtilities`, the factories). Runs in well under a second.
+* **`IntegrationTests/`** — real components against the real file system: `FolderSynchronizer` with
+  `FileOperations` and the real hash comparers, the log sinks, and `SyncOptionsValidator` (which exists
+  specifically to check paths on disk). Covers copying nested trees, same-size content changes, deleting
+  stale files/folders, replacing a file with a folder and vice versa, read-only and hidden files,
+  timestamp preservation, and error isolation against a genuinely locked file and an injected failing
+  `IFileOperations`.
+* **`EndToEndTests/`** — real command line arguments through `SyncOptionsParser` and
+  `SyncOptionsValidator`, then `SyncApplicationFactory` wiring the whole graph, run against a real
+  folder pair. This is the closest thing to running the published executable.
+
+Run one category at a time with `dotnet test --filter FullyQualifiedName~UnitTests` (or
+`IntegrationTests` / `EndToEndTests`).

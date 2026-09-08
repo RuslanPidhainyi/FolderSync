@@ -3,8 +3,9 @@ using FolderSync.Sync.Comparison;
 using FolderSync.Sync.FileSystem;
 using FolderSync.Tests.Support;
 
-namespace FolderSync.Tests;
+namespace FolderSync.Tests.IntegrationTests;
 
+/// <summary>The algorithm together with the real file system and the real MD5 comparer.</summary>
 public sealed class FolderSynchronizerTests : IDisposable
 {
     private readonly TempDirectory _source = new();
@@ -18,19 +19,23 @@ public sealed class FolderSynchronizerTests : IDisposable
         _replica.Dispose();
     }
 
-    private SyncResult Sync() =>
-        new FolderSynchronizer(_source.Path, _replica.Path, _comparer, _log).Synchronize();
+    private FolderSynchronizer CreateSynchronizer(IFileOperations? fileSystem = null) =>
+        new(_source.Path, _replica.Path, _comparer, fileSystem ?? new FileOperations(), _log);
 
     [Fact]
     public void Copies_new_files_and_nested_folders()
     {
+        // Arrange
         _source.WriteFile("a.txt", "A");
         _source.WriteFile("docs/b.txt", "B");
         _source.WriteFile("docs/inner/c.txt", "C");
         _source.CreateDir("empty");
+        var synchronizer = CreateSynchronizer();
 
-        var result = Sync();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(_source.Snapshot(), _replica.Snapshot());
         Assert.Equal("A", _replica.ReadFile("a.txt"));
         Assert.Equal("C", _replica.ReadFile("docs/inner/c.txt"));
@@ -42,27 +47,35 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
-    public void Creates_replica_folder_when_it_does_not_exist()
+    public void Creates_the_replica_folder_when_it_does_not_exist()
     {
+        // Arrange
         _source.WriteFile("a.txt", "A");
         var replicaPath = _replica.Sub("nested", "replica");
+        var synchronizer = new FolderSynchronizer(_source.Path, replicaPath, _comparer, _log);
 
-        var result = new FolderSynchronizer(_source.Path, replicaPath, _comparer, _log).Synchronize();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.True(File.Exists(Path.Combine(replicaPath, "a.txt")));
         Assert.Equal(1, result.FilesCreated);
         Assert.Contains(_log.Infos, e => e.Contains("Created folder") && e.Contains("<root>"));
     }
 
     [Fact]
-    public void Overwrites_file_whose_content_changed_but_size_did_not()
+    public void Overwrites_a_file_whose_content_changed_but_size_did_not()
     {
+        // Arrange
         _source.WriteFile("a.txt", "AAAA");
-        Sync();
-
+        var synchronizer = CreateSynchronizer();
+        synchronizer.Synchronize();
         _source.WriteFile("a.txt", "BBBB");
-        var result = Sync();
 
+        // Act
+        var result = synchronizer.Synchronize();
+
+        // Assert
         Assert.Equal("BBBB", _replica.ReadFile("a.txt"));
         Assert.Equal(1, result.FilesUpdated);
         Assert.Equal(0, result.FilesCreated);
@@ -70,29 +83,37 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
-    public void Overwrites_file_whose_size_changed()
+    public void Overwrites_a_file_whose_size_changed()
     {
+        // Arrange
         _source.WriteFile("a.txt", "short");
-        Sync();
-
+        var synchronizer = CreateSynchronizer();
+        synchronizer.Synchronize();
         _source.WriteFile("a.txt", "much longer content");
-        var result = Sync();
 
+        // Act
+        var result = synchronizer.Synchronize();
+
+        // Assert
         Assert.Equal("much longer content", _replica.ReadFile("a.txt"));
         Assert.Equal(1, result.FilesUpdated);
     }
 
     [Fact]
-    public void Deletes_files_and_folders_that_are_missing_in_source()
+    public void Deletes_files_and_folders_that_are_missing_in_the_source()
     {
+        // Arrange
         _source.WriteFile("keep.txt", "K");
         _replica.WriteFile("keep.txt", "K");
         _replica.WriteFile("stale.txt", "S");
         _replica.WriteFile("old/deep/x.txt", "X");
         _replica.CreateDir("old/emptyDir");
+        var synchronizer = CreateSynchronizer();
 
-        var result = Sync();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(_source.Snapshot(), _replica.Snapshot());
         Assert.False(_replica.FileExists("stale.txt"));
         Assert.False(_replica.DirExists("old"));
@@ -104,44 +125,56 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
-    public void Replaces_folder_with_file_and_file_with_folder_when_kind_differs()
+    public void Replaces_a_folder_with_a_file_and_a_file_with_a_folder_when_the_kind_differs()
     {
+        // Arrange
         _source.WriteFile("item", "now a file");
         _source.WriteFile("other/inside.txt", "now a folder");
         _replica.WriteFile("item/was-a-folder.txt", "old");
         _replica.WriteFile("other", "was a file");
+        var synchronizer = CreateSynchronizer();
 
-        Sync();
+        // Act
+        synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(_source.Snapshot(), _replica.Snapshot());
         Assert.Equal("now a file", _replica.ReadFile("item"));
         Assert.Equal("now a folder", _replica.ReadFile("other/inside.txt"));
     }
 
     [Fact]
-    public void Second_pass_without_changes_does_nothing()
+    public void A_second_pass_without_changes_does_nothing()
     {
+        // Arrange
         _source.WriteFile("a.txt", "A");
         _source.WriteFile("dir/b.txt", "B");
-        Sync();
+        var synchronizer = CreateSynchronizer();
+        synchronizer.Synchronize();
 
-        var result = Sync();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(0, result.TotalChanges);
         Assert.Equal(0, result.Errors);
     }
 
     [Fact]
-    public void Overwrites_and_deletes_read_only_files_in_replica()
+    public void Overwrites_and_deletes_read_only_files_in_the_replica()
     {
+        // Arrange
         _source.WriteFile("a.txt", "new");
         var replicaA = _replica.WriteFile("a.txt", "old");
         var replicaStale = _replica.WriteFile("stale.txt", "old");
         File.SetAttributes(replicaA, FileAttributes.ReadOnly);
         File.SetAttributes(replicaStale, FileAttributes.ReadOnly);
+        var synchronizer = CreateSynchronizer();
 
-        var result = Sync();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal("new", _replica.ReadFile("a.txt"));
         Assert.False(_replica.FileExists("stale.txt"));
         Assert.Equal(0, result.Errors);
@@ -150,53 +183,66 @@ public sealed class FolderSynchronizerTests : IDisposable
     [Fact]
     public void Copies_hidden_files()
     {
+        // Arrange
         var hidden = _source.WriteFile(".hidden", "h");
         File.SetAttributes(hidden, File.GetAttributes(hidden) | FileAttributes.Hidden);
+        var synchronizer = CreateSynchronizer();
 
-        Sync();
+        // Act
+        synchronizer.Synchronize();
 
+        // Assert
         Assert.True(_replica.FileExists(".hidden"));
         Assert.Equal("h", _replica.ReadFile(".hidden"));
     }
 
     [Fact]
-    public void Preserves_last_write_time_of_copied_files()
+    public void Preserves_the_last_write_time_of_copied_files()
     {
+        // Arrange
         var file = _source.WriteFile("a.txt", "A");
         var stamp = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
         File.SetLastWriteTimeUtc(file, stamp);
+        var synchronizer = CreateSynchronizer();
 
-        Sync();
+        // Act
+        synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(_replica.Sub("a.txt")));
     }
 
     [Fact]
-    public void Reports_error_and_continues_when_a_file_cannot_be_read()
+    public void Logs_a_locked_file_as_an_error_and_continues_with_the_rest()
     {
+        // Arrange
         _source.WriteFile("locked.txt", "L");
         _source.WriteFile("ok.txt", "OK");
         var replicaLocked = _replica.WriteFile("locked.txt", "different");
+        using var exclusiveHandle = new FileStream(replicaLocked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var synchronizer = CreateSynchronizer();
 
-        // Hold an exclusive handle so the comparison fails.
-        using var handle = new FileStream(replicaLocked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-        var result = Sync();
+        // Act
+        var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(1, result.Errors);
         Assert.Equal("OK", _replica.ReadFile("ok.txt"));
         Assert.Contains(_log.Errors, e => e.Contains("locked.txt"));
     }
 
     [Fact]
-    public void Isolates_failures_reported_by_file_operations()
+    public void Isolates_failures_reported_by_the_file_operations()
     {
+        // Arrange
         _source.WriteFile("bad.txt", "B");
         _source.WriteFile("good.txt", "G");
-        var fileSystem = new FailingFileOperations { FailCopyOf = "bad.txt" };
-        var synchronizer = new FolderSynchronizer(_source.Path, _replica.Path, _comparer, fileSystem, _log);
+        var synchronizer = CreateSynchronizer(new FailingFileOperations { FailCopyOf = "bad.txt" });
 
+        // Act
         var result = synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(1, result.Errors);
         Assert.Equal(1, result.FilesCreated);
         Assert.True(_replica.FileExists("good.txt"));
@@ -205,35 +251,45 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
-    public void Throws_when_source_does_not_exist()
+    public void Throws_when_the_source_does_not_exist()
     {
+        // Arrange
         var missing = _source.Sub("missing");
         var synchronizer = new FolderSynchronizer(missing, _replica.Path, _comparer, _log);
+        Action act = () => synchronizer.Synchronize();
 
-        Assert.Throws<DirectoryNotFoundException>(() => synchronizer.Synchronize());
+        // Act & Assert
+        Assert.Throws<DirectoryNotFoundException>(act);
     }
 
     [Fact]
-    public void Honours_cancellation()
+    public void Honours_cancellation_before_touching_the_replica()
     {
+        // Arrange
         _source.WriteFile("a.txt", "A");
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-        var synchronizer = new FolderSynchronizer(_source.Path, _replica.Path, _comparer, _log);
+        var synchronizer = CreateSynchronizer();
+        Action act = () => synchronizer.Synchronize(cts.Token);
 
-        Assert.Throws<OperationCanceledException>(() => synchronizer.Synchronize(cts.Token));
+        // Act & Assert
+        Assert.Throws<OperationCanceledException>(act);
         Assert.False(_replica.FileExists("a.txt"));
     }
 
     [Fact]
-    public void Copies_large_file_correctly()
+    public void Copies_a_large_file_byte_for_byte()
     {
+        // Arrange
         var bytes = new byte[3 * 1024 * 1024 + 17];
         new Random(42).NextBytes(bytes);
         File.WriteAllBytes(_source.Sub("big.bin"), bytes);
+        var synchronizer = CreateSynchronizer();
 
-        Sync();
+        // Act
+        synchronizer.Synchronize();
 
+        // Assert
         Assert.Equal(bytes, File.ReadAllBytes(_replica.Sub("big.bin")));
     }
 
