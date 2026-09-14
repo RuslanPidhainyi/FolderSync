@@ -143,6 +143,26 @@ public sealed class FolderSynchronizerTests : IDisposable
     }
 
     [Fact]
+    public void Renames_files_and_folders_whose_name_differs_only_in_letter_case()
+    {
+        // Arrange
+        _source.WriteFile("Notes.txt", "N");
+        _source.WriteFile("Docs/a.txt", "A");
+        _replica.WriteFile("notes.txt", "N");
+        _replica.WriteFile("docs/a.txt", "A");
+        var synchronizer = CreateSynchronizer();
+
+        // Act
+        var result = synchronizer.Synchronize();
+
+        // Assert
+        Assert.Equal(_source.Snapshot(), _replica.Snapshot());
+        Assert.Equal("N", _replica.ReadFile("Notes.txt"));
+        Assert.Equal("A", _replica.ReadFile("Docs/a.txt"));
+        Assert.Equal(0, result.Errors);
+    }
+
+    [Fact]
     public void A_second_pass_without_changes_does_nothing()
     {
         // Arrange

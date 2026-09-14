@@ -12,7 +12,7 @@ both to the console and to a log file.
 ## Build
 
 ```bash
-git clone https://github.com/<your-account>/FolderSync.git
+git clone https://github.com/RuslanPidhainyi/FolderSync.git
 cd FolderSync
 dotnet build -c Release
 ```
@@ -81,7 +81,7 @@ Each pass walks the source and replica trees together, one directory at a time:
 
 1. **Index** the entries of the current source directory.
 2. **Delete** everything in the matching replica directory that is not in the source. A replica entry whose kind
-   differs (file vs. folder) is deleted too, so it can be replaced.
+   differs (file vs. folder), or whose name differs only in letter case, is deleted too, so it can be replaced.
 3. **Copy** source files that are missing in the replica and **overwrite** files whose content differs
    according to the selected comparison mode. The replica file keeps the source file's last-write time.
 4. **Recurse** into sub-folders, creating them in the replica when needed.
@@ -152,7 +152,8 @@ Patterns and principles in use:
 * **Directory symlinks** in the source are skipped with a warning to avoid cycles; in the replica they are
   removed as a single entry without descending into the target.
 * **Case sensitivity** follows the platform: names are compared case-insensitively on Windows/macOS and
-  case-sensitively on Linux.
+  case-sensitively on Linux. The replica still mirrors the exact spelling: after a case-only rename in the
+  source (`a.txt` → `A.txt`) the old entry is removed and copied again under the new name.
 
 ### Known limitations
 
@@ -214,7 +215,7 @@ Every test follows Arrange / Act / Assert, and tests are split by what they touc
 * **`IntegrationTests/`** — real components against the real file system: `FolderSynchronizer` with
   `FileOperations` and the real hash comparers, the log sinks, and `SyncOptionsValidator` (which exists
   specifically to check paths on disk). Covers copying nested trees, same-size content changes, deleting
-  stale files/folders, replacing a file with a folder and vice versa, read-only and hidden files,
+  stale files/folders, replacing a file with a folder and vice versa, case-only renames, read-only and hidden files,
   timestamp preservation, and error isolation against a genuinely locked file and an injected failing
   `IFileOperations`.
 * **`EndToEndTests/`** — real command line arguments through `SyncOptionsParser` and

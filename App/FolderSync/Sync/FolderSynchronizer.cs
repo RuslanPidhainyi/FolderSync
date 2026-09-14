@@ -126,15 +126,20 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
 
             switch (entry)
             {
-                case DirectoryInfo dir when !sourceDirs.ContainsKey(dir.Name):
+                case DirectoryInfo dir when !HasExactMatch(sourceDirs, dir.Name):
                     DeleteDirectoryTree(dir, entryPath, stats, cancellationToken);
                     break;
-                case FileInfo file when !sourceFiles.ContainsKey(file.Name):
+                case FileInfo file when !HasExactMatch(sourceFiles, file.Name):
                     Apply(SyncOperation.DeleteFile, entryPath, () => _fileSystem.DeleteFile(file), stats);
                     break;
             }
         }
     }
+
+    private static bool HasExactMatch<TEntry>(IReadOnlyDictionary<string, TEntry> sourceEntries, string name)
+        where TEntry : FileSystemInfo =>
+        sourceEntries.TryGetValue(name, out var sourceEntry)
+        && string.Equals(sourceEntry.Name, name, StringComparison.Ordinal);
 
     private void CopyChangedFiles(
         IEnumerable<FileInfo> sourceFiles,
