@@ -1,8 +1,5 @@
 namespace FolderSync.Sync;
 
-/// <summary>
-/// Summary of a single synchronization pass.
-/// </summary>
 public sealed record SyncResult(
     int FilesCreated,
     int FilesUpdated,

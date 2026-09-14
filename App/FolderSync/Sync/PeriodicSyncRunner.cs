@@ -2,10 +2,6 @@ using FolderSync.Logging;
 
 namespace FolderSync.Sync;
 
-/// <summary>
-/// Runs the synchronizer immediately and then once per interval until cancelled.
-/// Passes never overlap: if one pass takes longer than the interval, the next one starts right after it.
-/// </summary>
 public sealed class PeriodicSyncRunner
 {
     private readonly IFolderSynchronizer _synchronizer;
@@ -37,7 +33,6 @@ public sealed class PeriodicSyncRunner
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false));
     }
 
-    /// <summary>Runs a single pass. Returns <c>true</c> when it completed without any error.</summary>
     public bool RunOnce(CancellationToken cancellationToken)
     {
         var pass = CompletedPasses + 1;

@@ -2,7 +2,6 @@ using FolderSync.Sync.Comparison;
 
 namespace FolderSync.Tests.UnitTests;
 
-/// <summary>Constructor guards only; hashing real files is covered by the integration tests.</summary>
 public sealed class HashFileComparerArgumentTests
 {
     [Theory]

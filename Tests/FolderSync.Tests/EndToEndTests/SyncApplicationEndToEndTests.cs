@@ -4,10 +4,6 @@ using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests.EndToEndTests;
 
-/// <summary>
-/// The whole program as the user runs it, minus the process boundary: arguments are parsed and
-/// validated, the composition root wires real components, and a real folder gets mirrored.
-/// </summary>
 public sealed class SyncApplicationEndToEndTests : IDisposable
 {
     private readonly TempDirectory _root = new();
@@ -24,11 +20,6 @@ public sealed class SyncApplicationEndToEndTests : IDisposable
 
     public void Dispose() => _root.Dispose();
 
-    /// <summary>
-    /// Builds options entirely from named arguments so extra flags (--once, --compare, --interval)
-    /// never collide with a positional slot; the positional form itself is covered by the parser's
-    /// own unit tests.
-    /// </summary>
     private SyncOptions ParseAndValidate(string interval, params string[] extraArgs)
     {
         var options = SyncOptionsParser.Parse(
@@ -125,7 +116,7 @@ public sealed class SyncApplicationEndToEndTests : IDisposable
         // Act
         Assert.Throws<ArgumentOutOfRangeException>(act);
 
-        // Assert: if the logger had leaked, opening the file exclusively would fail.
+        // Assert
         using var exclusive = new FileStream(_log, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
     }
 }

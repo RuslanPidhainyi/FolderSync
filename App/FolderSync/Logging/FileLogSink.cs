@@ -1,9 +1,5 @@
 namespace FolderSync.Logging;
 
-/// <summary>
-/// Appends lines to a log file. The file is opened in append mode so history survives restarts,
-/// and every line is flushed immediately so nothing is lost if the process is killed.
-/// </summary>
 public sealed class FileLogSink : ILogSink
 {
     private readonly StreamWriter _writer;

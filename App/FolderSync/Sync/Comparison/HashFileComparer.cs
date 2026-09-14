@@ -1,10 +1,5 @@
 namespace FolderSync.Sync.Comparison;
 
-/// <summary>
-/// Compares files by size first (cheap) and then by a digest of their content.
-/// The hash function is injected, so MD5, SHA-256 or any other algorithm share this one implementation.
-/// The digest is used purely as a content fingerprint, not for security.
-/// </summary>
 public sealed class HashFileComparer : IFileComparer
 {
     private const int BufferSize = 1 << 16;

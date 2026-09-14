@@ -1,11 +1,9 @@
 namespace FolderSync.Sync.FileSystem;
 
-/// <summary>Default <see cref="IFileOperations"/> backed by <c>System.IO</c>.</summary>
 public sealed class FileOperations : IFileOperations
 {
     private static readonly EnumerationOptions Everything = new()
     {
-        // The default EnumerationOptions skip hidden and system entries; a mirror must include them.
         AttributesToSkip = 0,
         IgnoreInaccessible = false,
         RecurseSubdirectories = false,
@@ -39,7 +37,6 @@ public sealed class FileOperations : IFileOperations
         }
     }
 
-    /// <summary>Keeps the replica timestamp identical to the source so the copy is a faithful mirror.</summary>
     private static void TryPreserveLastWriteTime(FileInfo source, FileInfo destination)
     {
         try
@@ -48,7 +45,6 @@ public sealed class FileOperations : IFileOperations
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Not fatal: the content is already in place, only the timestamp differs.
         }
     }
 }

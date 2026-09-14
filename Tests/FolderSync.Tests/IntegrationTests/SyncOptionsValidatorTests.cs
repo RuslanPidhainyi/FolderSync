@@ -4,7 +4,6 @@ using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests.IntegrationTests;
 
-/// <summary>Validation looks at the real file system, so every case needs actual folders.</summary>
 public sealed class SyncOptionsValidatorTests : IDisposable
 {
     private readonly TempDirectory _root = new();

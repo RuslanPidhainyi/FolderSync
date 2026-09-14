@@ -1,6 +1,5 @@
 namespace FolderSync.Sync;
 
-/// <summary>Mutable counters for one pass; turned into an immutable <see cref="SyncResult"/> at the end.</summary>
 internal sealed class SyncStatistics
 {
     private readonly Dictionary<SyncOperation, int> _counts = [];

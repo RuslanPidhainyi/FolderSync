@@ -10,6 +10,5 @@ public sealed class ConsoleLogSink : ILogSink
 
     public void Dispose()
     {
-        // The console stream is not owned by the sink.
     }
 }

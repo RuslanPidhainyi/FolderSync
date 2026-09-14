@@ -45,7 +45,7 @@ public sealed class SyncLoggerFactoryTests : IDisposable
         // Act
         var exception = Record.Exception(act);
 
-        // Assert: Program.cs treats both as "log file could not be opened", so either is correct here.
+        // Assert
         Assert.True(
             exception is IOException or UnauthorizedAccessException,
             $"Expected IOException or UnauthorizedAccessException but got {exception?.GetType()}");

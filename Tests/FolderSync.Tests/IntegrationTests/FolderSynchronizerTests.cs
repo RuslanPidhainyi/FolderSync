@@ -5,7 +5,6 @@ using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests.IntegrationTests;
 
-/// <summary>The algorithm together with the real file system and the real MD5 comparer.</summary>
 public sealed class FolderSynchronizerTests : IDisposable
 {
     private readonly TempDirectory _source = new();
@@ -293,7 +292,6 @@ public sealed class FolderSynchronizerTests : IDisposable
         Assert.Equal(bytes, File.ReadAllBytes(_replica.Sub("big.bin")));
     }
 
-    /// <summary>Real file operations, except that copying one chosen file always fails.</summary>
     private sealed class FailingFileOperations : IFileOperations
     {
         private readonly FileOperations _inner = new();

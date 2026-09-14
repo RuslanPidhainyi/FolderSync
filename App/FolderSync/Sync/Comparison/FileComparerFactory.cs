@@ -2,11 +2,6 @@ using System.Security.Cryptography;
 
 namespace FolderSync.Sync.Comparison;
 
-/// <summary>
-/// Factory that maps a <see cref="ComparisonMode"/> chosen on the command line to a concrete
-/// <see cref="IFileComparer"/>. The synchronizer only ever sees the interface, so new strategies
-/// are added here without touching the synchronization algorithm.
-/// </summary>
 public static class FileComparerFactory
 {
     public static IFileComparer Create(ComparisonMode mode) => mode switch

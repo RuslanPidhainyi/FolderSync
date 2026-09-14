@@ -2,7 +2,6 @@ using FolderSync.Logging;
 
 namespace FolderSync.Tests.Support;
 
-/// <summary>In-memory <see cref="ILogSink"/> that keeps every line and remembers whether it was disposed.</summary>
 public sealed class RecordingSink : ILogSink
 {
     public List<string> Lines { get; } = [];

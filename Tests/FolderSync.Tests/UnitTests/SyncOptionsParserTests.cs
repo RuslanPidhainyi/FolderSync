@@ -3,7 +3,6 @@ using FolderSync.Sync.Comparison;
 
 namespace FolderSync.Tests.UnitTests;
 
-/// <summary>Parsing never touches the file system, so plain relative paths are enough here.</summary>
 public sealed class SyncOptionsParserTests
 {
     private const string Source = "source";

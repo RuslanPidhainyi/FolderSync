@@ -1,9 +1,5 @@
 namespace FolderSync.Logging;
 
-/// <summary>
-/// Formats log entries (timestamp + level + message) and fans each line out to every sink.
-/// Formatting lives here; where the lines go is the sinks' concern.
-/// </summary>
 public sealed class SyncLogger : ISyncLogger, IDisposable
 {
     private readonly ILogSink[] _sinks;

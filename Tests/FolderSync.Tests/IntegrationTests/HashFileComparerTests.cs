@@ -3,7 +3,6 @@ using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests.IntegrationTests;
 
-/// <summary>Both hash-based strategies against real files on disk.</summary>
 public sealed class HashFileComparerTests : IDisposable
 {
     private readonly TempDirectory _dir = new();

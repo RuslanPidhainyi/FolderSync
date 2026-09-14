@@ -6,7 +6,6 @@ using FolderSync.Tests.Support;
 
 namespace FolderSync.Tests.UnitTests;
 
-/// <summary>Exit-code mapping and lifecycle of <see cref="SyncApplication"/> with a scripted synchronizer.</summary>
 public sealed class SyncApplicationTests
 {
     private static SyncOptions Options(bool runOnce, TimeSpan? interval = null) =>

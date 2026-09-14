@@ -38,7 +38,6 @@ public static class Program
         using var shutdown = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
         {
-            // Let the current pass finish its current operation instead of killing the process.
             e.Cancel = true;
             shutdown.Cancel();
         };

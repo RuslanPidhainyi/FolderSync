@@ -2,13 +2,8 @@ using FolderSync.Sync;
 
 namespace FolderSync.Cli;
 
-/// <summary>
-/// Checks parsed options against the file system and rejects configurations that would destroy
-/// data or loop forever. Kept apart from <see cref="SyncOptionsParser"/> so that parsing stays pure.
-/// </summary>
 public static class SyncOptionsValidator
 {
-    /// <exception cref="OptionsException">The options are unusable; the message is meant for the user.</exception>
     public static void Validate(SyncOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

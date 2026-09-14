@@ -1,6 +1,5 @@
 namespace FolderSync.Tests.Support;
 
-/// <summary>A unique folder under the system temp path, removed on dispose.</summary>
 public sealed class TempDirectory : IDisposable
 {
     public TempDirectory()
@@ -34,7 +33,6 @@ public sealed class TempDirectory : IDisposable
 
     public bool DirExists(string relativePath) => Directory.Exists(Sub(relativePath.Split('/', '\\')));
 
-    /// <summary>Relative paths of all files and folders inside, sorted, using '/' as separator.</summary>
     public IReadOnlyList<string> Snapshot()
     {
         var root = System.IO.Path.TrimEndingDirectorySeparator(Path);
@@ -61,7 +59,6 @@ public sealed class TempDirectory : IDisposable
         }
         catch (IOException)
         {
-            // Best effort cleanup.
         }
     }
 }

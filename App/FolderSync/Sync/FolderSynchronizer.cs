@@ -5,15 +5,6 @@ using FolderSync.Sync.FileSystem;
 
 namespace FolderSync.Sync;
 
-/// <summary>
-/// One-way synchronizer: after <see cref="Synchronize"/> completes, the replica folder is an exact
-/// copy of the source folder. Files missing in the replica are copied, files that differ are
-/// overwritten, and anything that exists only in the replica is removed.
-/// </summary>
-/// <remarks>
-/// This class owns only the algorithm. How files are compared (<see cref="IFileComparer"/>) and
-/// how they are copied or deleted (<see cref="IFileOperations"/>) are injected.
-/// </remarks>
 public sealed class FolderSynchronizer : IFolderSynchronizer
 {
     private static readonly IReadOnlyDictionary<SyncOperation, (string Done, string Verb)> Messages =
@@ -115,7 +106,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
         SyncSubdirectories(sourceDirs.Values, replica, relativePath, stats, cancellationToken);
     }
 
-    /// <summary>Removes replica entries that are absent in the source or have a different kind (file vs. folder).</summary>
     private void RemoveExtraneousEntries(
         DirectoryInfo replica,
         string relativePath,
@@ -146,7 +136,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
         }
     }
 
-    /// <summary>Copies new files and overwrites files whose content differs.</summary>
     private void CopyChangedFiles(
         IEnumerable<FileInfo> sourceFiles,
         DirectoryInfo replica,
@@ -171,7 +160,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
         }
     }
 
-    /// <summary>Recurses into sub-folders, creating them in the replica when needed.</summary>
     private void SyncSubdirectories(
         IEnumerable<DirectoryInfo> sourceDirs,
         DirectoryInfo replica,
@@ -195,7 +183,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
         }
     }
 
-    /// <summary>Deletes a folder bottom-up so every removed file is logged individually.</summary>
     private void DeleteDirectoryTree(
         DirectoryInfo directory,
         string relativePath,
@@ -204,7 +191,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // A symlinked folder is removed as a single entry; its target is never touched.
         if (directory.LinkTarget is null && TryEnumerate(directory, relativePath, stats, out var entries))
         {
             foreach (var entry in entries)
@@ -225,11 +211,6 @@ public sealed class FolderSynchronizer : IFolderSynchronizer
         Apply(SyncOperation.DeleteDirectory, relativePath, () => _fileSystem.DeleteDirectory(directory), stats);
     }
 
-    // ---- Error isolation ------------------------------------------------------------------------
-    // Every file system call goes through Guard: a recoverable failure is logged and counted, and
-    // the pass carries on with the next entry. The entry is retried on the next pass.
-
-    /// <summary>Performs one change to the replica, logging and counting it on success.</summary>
     private bool Apply(SyncOperation operation, string relativePath, Action action, SyncStatistics stats)
     {
         var (done, verb) = Messages[operation];

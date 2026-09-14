@@ -4,10 +4,6 @@ using FolderSync.Sync;
 
 namespace FolderSync;
 
-/// <summary>
-/// The assembled program: owns the logger and drives the runner in single-pass or periodic mode.
-/// Built by <see cref="SyncApplicationFactory"/>.
-/// </summary>
 public sealed class SyncApplication : IDisposable
 {
     private readonly SyncOptions _options;

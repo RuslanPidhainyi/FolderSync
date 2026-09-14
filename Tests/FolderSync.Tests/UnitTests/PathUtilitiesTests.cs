@@ -2,7 +2,6 @@ using FolderSync.Sync;
 
 namespace FolderSync.Tests.UnitTests;
 
-/// <summary><see cref="PathUtilities"/> only manipulates strings; no folder in these tests exists on disk.</summary>
 public sealed class PathUtilitiesTests
 {
     private static readonly string Root = Path.GetFullPath(Path.Combine("unit-tests", "root"));

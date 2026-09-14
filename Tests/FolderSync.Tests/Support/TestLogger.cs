@@ -2,7 +2,6 @@ using FolderSync.Logging;
 
 namespace FolderSync.Tests.Support;
 
-/// <summary>In-memory logger that records every message for assertions.</summary>
 public sealed class TestLogger : ISyncLogger
 {
     private readonly List<string> _entries = [];

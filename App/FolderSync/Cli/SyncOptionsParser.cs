@@ -4,11 +4,6 @@ using FolderSync.Sync.Comparison;
 
 namespace FolderSync.Cli;
 
-/// <summary>
-/// Turns raw command line arguments into a <see cref="SyncOptions"/> without touching the file system.
-/// Named (<c>--source dir</c>) and positional (<c>source replica interval log</c>) forms are accepted.
-/// Run the result through <see cref="SyncOptionsValidator"/> before using it.
-/// </summary>
 public static partial class SyncOptionsParser
 {
     public const string Usage = """
@@ -41,7 +36,6 @@ public static partial class SyncOptionsParser
 
     private const string SupportedComparisonModes = "md5, sha256, quick";
 
-    /// <summary>Raw values collected while scanning the arguments.</summary>
     private sealed class Draft
     {
         public string? Source;
@@ -52,10 +46,6 @@ public static partial class SyncOptionsParser
         public bool RunOnce;
     }
 
-    /// <summary>
-    /// Describes one value-taking option. A single table drives named parsing, positional
-    /// fallback and the "not specified" errors, so adding an option is a one-line change.
-    /// </summary>
     private sealed record OptionSpec(
         string ShortName,
         string LongName,
@@ -73,10 +63,6 @@ public static partial class SyncOptionsParser
         new("-c", "--compare", "comparison mode", false, d => d.Compare, (d, v) => d.Compare = v),
     ];
 
-    /// <summary>
-    /// Parses the arguments. Returns <c>null</c> when help was requested.
-    /// Throws <see cref="OptionsException"/> with a user-friendly message on any problem.
-    /// </summary>
     public static SyncOptions? Parse(IReadOnlyList<string> args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -180,7 +166,6 @@ public static partial class SyncOptionsParser
         };
     }
 
-    /// <summary>Positional values fill the options that were not given by name, in the documented order.</summary>
     private static void AssignPositional(Draft draft, List<string> positional)
     {
         var queue = new Queue<string>(positional);
